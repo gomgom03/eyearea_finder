@@ -6,8 +6,8 @@ app.use(express.static('public'));
 app.set('views', __dirname + '/views')
 app.set('view engine','ejs');
 
-let server = app.listen(3000,function(){
-    console.log('listening to port 3000');
+let server = app.listen(process.env.PORT || 8080,function(){
+    console.log('listening to port 8080');
 })
 
 
