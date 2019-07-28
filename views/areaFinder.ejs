@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+    <link rel="stylesheet" href="/areaFinder.css">
+</head>
+
+<body>
+    <h1>Area Finder</h1>
+    <input type="file" onchange="previewFile()">
+    <div id="imgBody">
+        <img src="" alt="Image preview..." class="insideImgBody">
+        <button id="submitButton" class="insideImgBody">Next</button>
+    </div>
+    <button id="dimensionsInput" class="topBar">Input Dimensions</button>
+    <input type="number" class="topBar" placeholder="Amount" id="dimensionsAmount">
+    <input type="text" class="topBar" placeholder="Unit Ex.)mm" id="dimensionsUnit">
+    <button id="dimensionsSubmit" class="topBar">Set</button>
+    <button id="clearButton" class="sideBar">Clear</button>
+    <button id="undoButton" class="sideBar">Undo</button>
+    <button id="showDimensions" class="sideBar">Show Dimensions</button>
+    <a href="https://docs.google.com/document/d/1BtqFrqZPrj4BofxP2CFLeG1TuEiT-3osT0hwzTgiPGA/edit?usp=sharing" class = "topBar" id = "suggestionsLink">Link to Suggestion Sheet</a>
+    <script src="/areaFinder.js"></script>
+</body>
+
+</html>
