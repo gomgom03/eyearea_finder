@@ -1,9 +1,11 @@
+
+let isTiff;
 let unit = "mm"
 let baseLength = 10;
 let currentInputing = false;
 let basePixelPush = [];
 let basePixels = 10;
-
+let curTiff;
 
 let screenWidth = screen.width;
 let undoButton = document.getElementById('undoButton');
@@ -34,15 +36,27 @@ function previewFile() {
     topBar[3].style.visibility = "hidden";
     let preview = document.querySelector('img');
     let file = document.querySelector('input[type=file]').files[0];
+    isTiff = file.name.split(".").pop() == "tiff" || file.name.split(".").pop() == "tif"
     let reader = new FileReader();
 
     reader.onloadend = function () {
-        preview.src = reader.result;
-        currentImg.src = reader.result;
+        if (isTiff) {
+            
+            //preview.alt = "Cannot show preview file of a .tiff or .tif file";
+            curTiff = new Tiff({ buffer: reader.result });
+            //console.log(curTiff.toDataURL())
+            
+            preview.src = curTiff.toDataURL();
+            currentImg.src = curTiff.toDataURL();
+        } else {
+            preview.src = reader.result;
+            currentImg.src = reader.result;
+            console.log(reader.result);
+        }
     }
 
     if (file) {
-        reader.readAsDataURL(file);
+        isTiff ? reader.readAsArrayBuffer(file) : reader.readAsDataURL(file);
         submitButton.style.visibility = "visible";
     } else {
         preview.src = "";
@@ -129,6 +143,7 @@ drawArea.canvas.addEventListener('click', (event) => {
 
 
 function drawAreaStart() {
+    drawArea.context = drawArea.canvas.getContext("2d");
     clearVariables();
     document.querySelector('img').src = "";
     submitButton.style.visibility = "hidden";
@@ -136,12 +151,20 @@ function drawAreaStart() {
     clearButton.style.visibility = "visible";
     showDimensionsButton.style.visibility = "visible";
     topBar[0].style.visibility = "visible";
-    drawArea.canvas.width = screenWidth * 0.7; allPoints = [];
-    dashedLines = [];
-    drawArea.canvas.height = currentImg.height / currentImg.width * drawArea.canvas.width;
-    drawArea.context = drawArea.canvas.getContext("2d");
-    drawCurrentImage();
+    //if (isTiff) {
+    //    drawArea.canvas = curTiff.toCanvas();
+    //} else {
+
+        drawArea.canvas.width = screenWidth * 0.7; allPoints = [];
+        dashedLines = [];
+        drawArea.canvas.height = currentImg.height / currentImg.width * drawArea.canvas.width;
+        
+        drawCurrentImage();
+        
+    //}
+    
     document.body.insertBefore(drawArea.canvas, document.body.childNodes[0]);
+    //updateAll();
 }
 
 function addPoint(posX, posY) {
@@ -156,7 +179,7 @@ function addPoint(posX, posY) {
         allPoints = [];
         curFirstPoint = null;
         setAreaTxt(allAreas[allAreas.length - 1]);
-        
+
     } else {
         if (!curFirstPoint && !currentInputing) {
             curFirstPoint = JSON.parse(JSON.stringify(newPoint));
@@ -231,7 +254,23 @@ function updateDashedLines() {
 }
 
 function drawCurrentImage() {
-    drawArea.context.drawImage(currentImg, 0, 0, drawArea.canvas.width, drawArea.canvas.height);
+    /*
+    if (isTiff) {
+        drawArea.canvas = curTiff.toCanvas();
+        console.log(drawArea.canvas);
+        drawArea.canvas.addEventListener('click', (event) => {
+            var rect = drawArea.canvas.getBoundingClientRect();
+            console.log(rect)
+            let mouseX = event.clientX - rect.left
+            let mouseY = event.clientY - rect.top;
+            addPoint(mouseX, mouseY);
+        
+        });
+        console.log(drawArea.canvas);
+    } else {*/
+        drawArea.context.drawImage(currentImg, 0, 0, drawArea.canvas.width, drawArea.canvas.height);
+    //}
+
 }
 
 function updateAll() {
@@ -241,9 +280,9 @@ function updateAll() {
     updateDashedLines();
     reLengthDashed();
     setAllAreaTxt();
-    if(showingDimensions){
-        dashedLines.forEach(function(x){x.updateLengthText()});
-        allAreas.forEach(function(x){x.updateArea()});
+    if (showingDimensions) {
+        dashedLines.forEach(function (x) { x.updateLengthText() });
+        allAreas.forEach(function (x) { x.updateArea() });
     }
 }
 
@@ -284,8 +323,8 @@ function setAreaTxt(x) {
     }
 }
 
-function setAllAreaTxt(){
-    for(let i = 0; i<allAreas.length;i++){
+function setAllAreaTxt() {
+    for (let i = 0; i < allAreas.length; i++) {
         setAreaTxt(allAreas[i]);
     }
 }
