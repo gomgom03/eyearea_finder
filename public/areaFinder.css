@@ -92,6 +92,12 @@ canvas{
     background-color:green;
 }
 
+#drawType{
+    Top: 18%;
+    height: 10%;
+    font-size:150%;
+}
+
 canvas:hover{
     cursor: crosshair;
 }

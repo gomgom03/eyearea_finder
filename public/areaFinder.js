@@ -7,8 +7,103 @@ let basePixelPush = [];
 let basePixels = 10;
 let curTiff;
 
+//DRAW TYPE 
+let recordLasso = false;
+let drawTypePoints = true;
+let drawType = document.getElementById("drawType");
+
+drawType.addEventListener('click', drawTypeFunc);
+
+function drawTypeFunc(){
+    if (drawTypePoints) {
+        drawTypePoints = false;
+        drawType.innerHTML = "Draw Type: <strong>Lasso</strong>"
+    } else {
+        drawTypePoints = true;
+        drawType.innerHTML = "Draw Type: <strong>Points</strong>"
+    }
+    clearVariables();
+    updateAll();
+    assignDrawTypeListener();
+}
+
+function assignDrawTypeListener() {
+
+    if (drawTypePoints) {
+        drawArea.canvas.removeEventListener('mousedown', mouseHandlers.mousedown);
+        drawArea.canvas.removeEventListener('mousemove', mouseHandlers.mousemove);
+        drawArea.canvas.removeEventListener('mouseleave', mouseHandlers.mouseleave);
+        drawArea.canvas.removeEventListener('mouseup', mouseHandlers.mouseup);
+        drawArea.canvas.addEventListener('click', mouseHandlers.click);
+    } else {
+        drawArea.canvas.removeEventListener('click', mouseHandlers.click);
+        drawArea.canvas.addEventListener('mousedown', mouseHandlers.mousedown);
+        drawArea.canvas.addEventListener('mousemove', mouseHandlers.mousemove);
+        drawArea.canvas.addEventListener('mouseleave', mouseHandlers.mouseleave);
+        drawArea.canvas.addEventListener('mouseup', mouseHandlers.mouseup);
+    }
+}
+
+let mouseHandlers = {
+    click: function (event) {
+        let rect = drawArea.canvas.getBoundingClientRect();
+        let mouseX = event.clientX - rect.left;
+        let mouseY = event.clientY - rect.top;
+        addPoint(mouseX, mouseY);
+    },
+    mousedown: function (event) {
+        recordLasso = true;
+    },
+    mousemove: function (event) {
+        if (recordLasso) {
+            let rect = drawArea.canvas.getBoundingClientRect();
+            let mouseX = event.clientX - rect.left;
+            let mouseY = event.clientY - rect.top;
+            addPoint(mouseX, mouseY);
+        }
+    },
+    mouseleave: function () {
+        //recordLasso ? alert('Out of draw area') : null;
+        if (recordLasso) {
+            recordLasso = false;
+
+            closeLasso();
+        }
+
+
+    },
+    mouseup: function (event) {
+        recordLasso = false;
+        closeLasso();
+    }
+}
+
+function closeLasso() {
+    let dashedLine = new newDashedLine(allPoints[0], allPoints[allPoints.length - 1])
+    dashedLines.push(dashedLine);
+    allAreas.push({ points: allPoints });
+    let totalLength = 0;
+    for (let i = 0; i < allPoints.length - 1; i++) {
+        //console.log(findLength(allPoints[i],allPoints[i+1]));
+        totalLength += findLength(allPoints[i], allPoints[i + 1]);
+    }
+    console.log(totalLength);
+    allPoints = [];
+    curFirstPoint = null;
+    setAreaTxt(allAreas[allAreas.length - 1]);
+    updateAll();
+}
+
+
+//
+
 let screenWidth = screen.width;
 let undoButton = document.getElementById('undoButton');
+
+undoButton.addEventListener('click',function(){
+    alert("Sorry, the undo button doesn't work yet");
+})
+
 let clearButton = document.getElementById('clearButton');
 let showDimensionsButton = document.getElementById('showDimensions');
 let topBar = document.getElementsByClassName("topBar");
@@ -30,6 +125,7 @@ function previewFile() {
     undoButton.style.visibility = "hidden";
     clearButton.style.visibility = "hidden";
     showDimensionsButton.style.visibility = "hidden";
+    drawType.style.visibility = "hidden";
     topBar[0].style.visibility = "hidden";
     topBar[1].style.visibility = "hidden";
     topBar[2].style.visibility = "hidden";
@@ -41,17 +137,17 @@ function previewFile() {
 
     reader.onloadend = function () {
         if (isTiff) {
-            
+
             //preview.alt = "Cannot show preview file of a .tiff or .tif file";
             curTiff = new Tiff({ buffer: reader.result });
             //console.log(curTiff.toDataURL())
-            
+
             preview.src = curTiff.toDataURL();
             currentImg.src = curTiff.toDataURL();
         } else {
             preview.src = reader.result;
             currentImg.src = reader.result;
-            console.log(reader.result);
+            //console.log(reader.result);
         }
     }
 
@@ -65,6 +161,8 @@ function previewFile() {
 
 //events of top bar
 topBar[0].addEventListener("click", function () {
+    drawTypeFunc();
+
     topBar[0].style.visibility = "hidden";
     topBar[1].style.visibility = "visible";
     topBar[2].style.visibility = "visible";
@@ -74,6 +172,12 @@ topBar[0].addEventListener("click", function () {
 
 topBar[3].addEventListener("click", function () {
     if (basePixelPush.length == 2 && topBar[1].value != "" && topBar[2].value != "") {
+        /*
+        undoButton.style.visibility = "visible";
+        clearButton.style.visibility = "visible";
+        showDimensionsButton.style.visibility = "visible";
+        drawType.style.visibility = "visible";
+        */
         topBar[0].style.visibility = "visible";
         topBar[1].style.visibility = "hidden";
         topBar[2].style.visibility = "hidden";
@@ -90,6 +194,7 @@ topBar[3].addEventListener("click", function () {
         alert('Resetting points (too many points)');
         dashedLines.splice(dashedLines.length - basePixelPush.length + 1, basePixelPush.length - 1);
         basePixelPush = [];
+        updateAll();
     } else {
         alert('Too few points or fields empty');
     }
@@ -118,14 +223,15 @@ function circleComponent(centerX, centerY, radius, color = '#00fc04') {
     this.centerX = centerX;
     this.centerY = centerY;
     this.radius = radius;
+    this.color = color;
     this.update = function () {
         ctx = drawArea.context;
-        ctx.fillStyle = color;
+        ctx.fillStyle = this.color;
         ctx.beginPath();
-        ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI, false);
+        ctx.arc(this.centerX, this.centerY, this.radius, 0, 2 * Math.PI, false);
         ctx.fill();
         ctx.lineWidth = 0;
-        ctx.strokeStyle = '#00fc04';
+        ctx.strokeStyle = this.color;
         ctx.stroke();
     }
 }
@@ -133,36 +239,37 @@ function circleComponent(centerX, centerY, radius, color = '#00fc04') {
 
 
 submitButton.addEventListener('click', drawAreaStart);
-drawArea.canvas.addEventListener('click', (event) => {
-    var rect = drawArea.canvas.getBoundingClientRect();
-    let mouseX = event.clientX - rect.left
-    let mouseY = event.clientY - rect.top;
-    addPoint(mouseX, mouseY);
 
-});
+
+
 
 
 function drawAreaStart() {
     drawArea.context = drawArea.canvas.getContext("2d");
+    assignDrawTypeListener();
+
     clearVariables();
     document.querySelector('img').src = "";
     submitButton.style.visibility = "hidden";
+
     undoButton.style.visibility = "visible";
     clearButton.style.visibility = "visible";
     showDimensionsButton.style.visibility = "visible";
+    drawType.style.visibility = "visible";
+
     topBar[0].style.visibility = "visible";
     //if (isTiff) {
     //    drawArea.canvas = curTiff.toCanvas();
     //} else {
 
-        drawArea.canvas.width = screenWidth * 0.7; allPoints = [];
-        dashedLines = [];
-        drawArea.canvas.height = currentImg.height / currentImg.width * drawArea.canvas.width;
-        
-        drawCurrentImage();
-        
+    drawArea.canvas.width = screenWidth * 0.7; allPoints = [];
+    dashedLines = [];
+    drawArea.canvas.height = currentImg.height / currentImg.width * drawArea.canvas.width;
+
+    drawCurrentImage();
+
     //}
-    
+
     document.body.insertBefore(drawArea.canvas, document.body.childNodes[0]);
     //updateAll();
 }
@@ -170,7 +277,7 @@ function drawAreaStart() {
 function addPoint(posX, posY) {
 
     let newPoint = new circleComponent(posX, posY, 1, "#00eaff");
-    if (curFirstPoint != null && Math.sqrt(Math.pow((newPoint.centerX - curFirstPoint.centerX), 2) + Math.pow((newPoint.centerY - curFirstPoint.centerY), 2)) <= 8) {
+    if (curFirstPoint != null && Math.sqrt(Math.pow((newPoint.centerX - curFirstPoint.centerX), 2) + Math.pow((newPoint.centerY - curFirstPoint.centerY), 2)) <= 8 && drawTypePoints) {
         newPoint.centerX = curFirstPoint.centerX;
         newPoint.centerY = curFirstPoint.centerY;
         let dashedLine = new newDashedLine(allPoints[0], allPoints[allPoints.length - 1])
@@ -185,7 +292,15 @@ function addPoint(posX, posY) {
             curFirstPoint = JSON.parse(JSON.stringify(newPoint));
         }
 
-        currentInputing ? basePixelPush.push(newPoint) : allPoints.push(newPoint);
+        if (currentInputing) {
+            newPoint.color = "#00FFFF";
+            newPoint.radius = 4;
+            basePixelPush.push(newPoint);
+            updateInputPoints();
+        } else {
+            allPoints.push(newPoint);
+        }
+
         if (allPoints.length != 1 && !currentInputing) {
             let dashedLine = new newDashedLine(allPoints[allPoints.length - 2], allPoints[allPoints.length - 1])
             dashedLines.push(dashedLine);
@@ -230,14 +345,14 @@ function newDashedLine(comp1, comp2, color = "#00ff4c") {
         drawArea.context.lineTo(comp2.centerX, comp2.centerY);
         drawArea.context.stroke();
     };
-    this.lengthTxt = `${(findLength(comp1, comp2) * baseLength / basePixels).toFixed(4)} ${unit}`;
+    this.lengthTxt = drawTypePoints?`${(findLength(comp1, comp2) * baseLength / basePixels).toFixed(4)} ${unit}`:null;
     this.updateLengthText = function () {
         drawArea.context.font = "10px Arial";
         drawArea.context.fillStyle = "#fc0303";
-        drawArea.context.fillText(this.lengthTxt, (this.comp1.centerX + this.comp2.centerX) / 2 - drawArea.canvas.width / 32, (this.comp1.centerY + this.comp2.centerY) / 2);
+        drawTypePoints ? drawArea.context.fillText(this.lengthTxt, (this.comp1.centerX + this.comp2.centerX) / 2 - drawArea.canvas.width / 32, (this.comp1.centerY + this.comp2.centerY) / 2) : null;
     };
     this.reLengthTxt = function () {
-        this.lengthTxt = `${(findLength(comp1, comp2) * baseLength / basePixels).toFixed(4)} ${unit}`;
+        drawTypePoints ? this.lengthTxt = `${(findLength(comp1, comp2) * baseLength / basePixels).toFixed(4)} ${unit}` : null;
     }
 }
 
@@ -268,7 +383,7 @@ function drawCurrentImage() {
         });
         console.log(drawArea.canvas);
     } else {*/
-        drawArea.context.drawImage(currentImg, 0, 0, drawArea.canvas.width, drawArea.canvas.height);
+    drawArea.context.drawImage(currentImg, 0, 0, drawArea.canvas.width, drawArea.canvas.height);
     //}
 
 }
@@ -290,6 +405,7 @@ function clearVariables() {
     allPoints = [];
     dashedLines = [];
     curFirstPoint = null;
+    allAreas = [];
 }
 
 
@@ -332,5 +448,11 @@ function setAllAreaTxt() {
 function reLengthDashed() {
     for (let i = 0; i < dashedLines.length; i++) {
         dashedLines[i].reLengthTxt();
+    }
+}
+
+function updateInputPoints() {
+    for (let i = 0; i < basePixelPush.length; i++) {
+        basePixelPush[i].update();
     }
 }
