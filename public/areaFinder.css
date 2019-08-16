@@ -148,3 +148,14 @@ canvas:hover{
     font-size: 100%;
     visibility: visible;
 }
+
+#about{
+    font-size:200%;
+    -webkit-transition-duration: 0.4s; /* Safari */
+    transition-duration: 0.4s;
+    left:80%;
+    visibility: visible;
+    width:3%;
+    height:5.5%;
+    border-radius: 100%;
+}

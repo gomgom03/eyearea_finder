@@ -12,9 +12,9 @@
 
 <body>
     <h1>Area Finder</h1>
-    <input type="file" onchange="previewFile()">
+    <input type="file" onchange="previewFile()" accept=".png,.tiff,.tif,.jpg,.jpeg" title="&nbsp;">
     <div id="imgBody">
-        <img src="" alt="Image preview..." class="insideImgBody">
+        <img src=""  class="insideImgBody">
         <button id="submitButton" class="insideImgBody">Next</button>
     </div>
     <button id="dimensionsInput" class="topBar">Input Dimensions</button>
@@ -25,6 +25,7 @@
     <button id="undoButton" class="sideBar">Undo</button>
     <button id="showDimensions" class="sideBar">Show Dimensions</button>
     <button id="drawType" class = "sideBar">Draw Type: <strong>Points</strong></button>
+    <button id="about" class = "topBar" onclick="about()">?</button>
     <a href="https://docs.google.com/document/d/1BtqFrqZPrj4BofxP2CFLeG1TuEiT-3osT0hwzTgiPGA/edit?usp=sharing" class = "topBar" id = "suggestionsLink">Link to Suggestion Sheet</a>
     <script src="/areaFinder.js"></script>
 </body>

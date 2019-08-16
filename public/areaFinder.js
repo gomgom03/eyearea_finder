@@ -1,7 +1,7 @@
 
 let isTiff;
-let unit = "mm"
-let baseLength = 10;
+let unit=null;
+let baseLength = null;
 let currentInputing = false;
 let basePixelPush = [];
 let basePixels = 10;
@@ -161,8 +161,8 @@ function previewFile() {
 
 //events of top bar
 topBar[0].addEventListener("click", function () {
-    drawTypeFunc();
-
+    drawTypePoints?null:drawTypeFunc();
+    assignDrawTypeListener();
     topBar[0].style.visibility = "hidden";
     topBar[1].style.visibility = "visible";
     topBar[2].style.visibility = "visible";
@@ -245,9 +245,10 @@ submitButton.addEventListener('click', drawAreaStart);
 
 
 function drawAreaStart() {
+    
     drawArea.context = drawArea.canvas.getContext("2d");
     assignDrawTypeListener();
-
+    
     clearVariables();
     document.querySelector('img').src = "";
     submitButton.style.visibility = "hidden";
@@ -294,9 +295,9 @@ function addPoint(posX, posY) {
 
         if (currentInputing) {
             newPoint.color = "#00FFFF";
-            newPoint.radius = 4;
+            newPoint.radius = 2;
             basePixelPush.push(newPoint);
-            updateInputPoints();
+            //console.log(basePixelPush);
         } else {
             allPoints.push(newPoint);
         }
@@ -310,8 +311,9 @@ function addPoint(posX, posY) {
         }
     }
 
-
+    
     updateAll();
+    currentInputing?updateInputPoints():null;
 }
 
 function findArea(poi) {
@@ -395,7 +397,7 @@ function updateAll() {
     updateDashedLines();
     reLengthDashed();
     setAllAreaTxt();
-    if (showingDimensions) {
+    if (showingDimensions && unit!=null && baseLength!=null && basePixels!=null) {
         dashedLines.forEach(function (x) { x.updateLengthText() });
         allAreas.forEach(function (x) { x.updateArea() });
     }
@@ -410,6 +412,7 @@ function clearVariables() {
 
 
 clearButton.addEventListener("click", function () {
+    currentInputing?basePixelPush = []:null;
     clearVariables();
     allAreas = [];
     drawArea.clear();
@@ -417,7 +420,9 @@ clearButton.addEventListener("click", function () {
 });
 
 function resetBasePixel() {
-    basePixels = 10;
+    baseLength = null;
+    unit = null;
+    basePixels = null; // was 10
     basePixelPush = [];
 }
 
@@ -452,7 +457,19 @@ function reLengthDashed() {
 }
 
 function updateInputPoints() {
+    //console.log('this was called');
     for (let i = 0; i < basePixelPush.length; i++) {
         basePixelPush[i].update();
     }
+}
+
+
+
+
+
+
+
+
+function about(){
+    alert("This web app does not support Internet Explorer, Opera Mini, Blackberry Browser, Opera Mobile, and IE Mobile")
 }
