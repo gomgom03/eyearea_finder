@@ -1,0 +1,19 @@
+body{
+    margin: 0 auto;
+    text-align:center;
+    display: block;
+    
+}
+
+#areafind{
+    font-size: 300%;
+    padding: 11.65%;
+    
+    display: block;
+}
+
+#howToUse{
+    display: block;
+    padding: 11.65%;
+    
+}

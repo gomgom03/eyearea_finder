@@ -1,3 +1,9 @@
+/* Copyright (C) - All Rights Reserved
+ * Unauthorized copying of this file, via any medium is strictly prohibited
+ * Proprietary and confidential
+ * Written by Hyun Min Kim <gomgom03@gmail.com>, August 2019
+ */
+
 
 let isTiff;
 let unit=null;
@@ -12,7 +18,17 @@ let recordLasso = false;
 let drawTypePoints = true;
 let drawType = document.getElementById("drawType");
 
-drawType.addEventListener('click', drawTypeFunc);
+drawType.addEventListener('click', function(){verify(drawTypeFunc)});
+
+function verify(func){
+    switch(func){
+        case drawTypeFunc:
+            confirm("This will clear the current drawing")?func():null;
+            break;
+        default:
+    }
+    
+}
 
 function drawTypeFunc(){
     if (drawTypePoints) {
