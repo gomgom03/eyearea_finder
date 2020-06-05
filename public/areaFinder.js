@@ -4,180 +4,61 @@
  * Written by Hyun Min Kim <gomgom03@gmail.com>, August 2019
  */
 
-
-let isTiff;
-let unit=null;
-let baseLength = null;
-let currentInputing = false;
-let basePixelPush = [];
-let basePixels = 10;
-let curTiff;
-
-//DRAW TYPE 
-let recordLasso = false;
-let drawTypePoints = true;
-let drawType = document.getElementById("drawType");
-
-drawType.addEventListener('click', function(){verify(drawTypeFunc)});
-
-function verify(func){
-    switch(func){
-        case drawTypeFunc:
-            confirm("This will clear the current drawing")?func():null;
-            break;
-        default:
-    }
-    
-}
-
-function drawTypeFunc(){
-    if (drawTypePoints) {
-        drawTypePoints = false;
-        drawType.innerHTML = "Draw Type: <strong>Lasso</strong>"
-    } else {
-        drawTypePoints = true;
-        drawType.innerHTML = "Draw Type: <strong>Points</strong>"
-    }
-    clearVariables();
-    updateAll();
-    assignDrawTypeListener();
-}
-
-function assignDrawTypeListener() {
-
-    if (drawTypePoints) {
-        drawArea.canvas.removeEventListener('mousedown', mouseHandlers.mousedown);
-        drawArea.canvas.removeEventListener('mousemove', mouseHandlers.mousemove);
-        drawArea.canvas.removeEventListener('mouseleave', mouseHandlers.mouseleave);
-        drawArea.canvas.removeEventListener('mouseup', mouseHandlers.mouseup);
-        drawArea.canvas.addEventListener('click', mouseHandlers.click);
-    } else {
-        drawArea.canvas.removeEventListener('click', mouseHandlers.click);
-        drawArea.canvas.addEventListener('mousedown', mouseHandlers.mousedown);
-        drawArea.canvas.addEventListener('mousemove', mouseHandlers.mousemove);
-        drawArea.canvas.addEventListener('mouseleave', mouseHandlers.mouseleave);
-        drawArea.canvas.addEventListener('mouseup', mouseHandlers.mouseup);
-    }
-}
-
-let mouseHandlers = {
-    click: function (event) {
-        let rect = drawArea.canvas.getBoundingClientRect();
-        let mouseX = event.clientX - rect.left;
-        let mouseY = event.clientY - rect.top;
-        addPoint(mouseX, mouseY);
-    },
-    mousedown: function (event) {
-        recordLasso = true;
-    },
-    mousemove: function (event) {
-        if (recordLasso) {
-            let rect = drawArea.canvas.getBoundingClientRect();
-            let mouseX = event.clientX - rect.left;
-            let mouseY = event.clientY - rect.top;
-            addPoint(mouseX, mouseY);
-        }
-    },
-    mouseleave: function () {
-        //recordLasso ? alert('Out of draw area') : null;
-        if (recordLasso) {
-            recordLasso = false;
-
-            closeLasso();
-        }
-
-
-    },
-    mouseup: function (event) {
-        recordLasso = false;
-        closeLasso();
-    }
-}
-
-function closeLasso() {
-    let dashedLine = new newDashedLine(allPoints[0], allPoints[allPoints.length - 1])
-    dashedLines.push(dashedLine);
-    allAreas.push({ points: allPoints });
-    let totalLength = 0;
-    for (let i = 0; i < allPoints.length - 1; i++) {
-        //console.log(findLength(allPoints[i],allPoints[i+1]));
-        totalLength += findLength(allPoints[i], allPoints[i + 1]);
-    }
-    console.log(totalLength);
-    allPoints = [];
+//GLOBAL VARIABLES
+let isTiff,
+    unit = null,
+    baseLength = null,
+    currentInputing = false,
+    basePixelPush = [],
+    basePixels = 10,
+    curTiff,
+    recordLasso = false,
+    drawTypePoints = true,
+    screenWidth = screen.width,
+    showingDimensions = false,
+    currentImg = new Image(),
+    allAreas = [],
+    allPoints = [],
+    dashedLines = [],
     curFirstPoint = null;
-    setAreaTxt(allAreas[allAreas.length - 1]);
-    updateAll();
+
+
+//OBJECTS 
+let previousMove = {
+    allPoints: null,
+    dashedLines: null,
+    curFirstPoint: null,
+    allAreas: null
 }
 
-
-//
-
-let screenWidth = screen.width;
-let undoButton = document.getElementById('undoButton');
-
-undoButton.addEventListener('click',function(){
-    alert("Sorry, the undo button doesn't work yet");
-})
-
-let clearButton = document.getElementById('clearButton');
-let showDimensionsButton = document.getElementById('showDimensions');
-let topBar = document.getElementsByClassName("topBar");
 let drawArea = {
     canvas: document.createElement('canvas'),
     clear: function () {
         this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
     }
 }
-let currentImg = new Image();
-let canvas = document.createElement('canvas');
 
-//picture verification
-let submitButton = document.getElementById('submitButton');
+
+//DOM INSTANTIATION
+let undoButton = document.getElementById('undoButton'),
+    clearButton = document.getElementById('clearButton'),
+    showDimensionsButton = document.getElementById('showDimensions'),
+    topBar = document.getElementsByClassName("topBar"),
+    submitButton = document.getElementById('submitButton'),
+    drawType = document.getElementById("drawType");
+
+//PRESET
 submitButton.style.visibility = "hidden";
 
-function previewFile() {
-    resetBasePixel();
-    undoButton.style.visibility = "hidden";
-    clearButton.style.visibility = "hidden";
-    showDimensionsButton.style.visibility = "hidden";
-    drawType.style.visibility = "hidden";
-    topBar[0].style.visibility = "hidden";
-    topBar[1].style.visibility = "hidden";
-    topBar[2].style.visibility = "hidden";
-    topBar[3].style.visibility = "hidden";
-    let preview = document.querySelector('img');
-    let file = document.querySelector('input[type=file]').files[0];
-    isTiff = file.name.split(".").pop() == "tiff" || file.name.split(".").pop() == "tif"
-    let reader = new FileReader();
+//DOM EVENTLISTENERS
+undoButton.addEventListener('click', goPrevious);
 
-    reader.onloadend = function () {
-        if (isTiff) {
+drawType.addEventListener('click', function () { verify(drawTypeFunc); });
 
-            //preview.alt = "Cannot show preview file of a .tiff or .tif file";
-            curTiff = new Tiff({ buffer: reader.result });
-            //console.log(curTiff.toDataURL())
+submitButton.addEventListener('click', drawAreaStart);
 
-            preview.src = curTiff.toDataURL();
-            currentImg.src = curTiff.toDataURL();
-        } else {
-            preview.src = reader.result;
-            currentImg.src = reader.result;
-            //console.log(reader.result);
-        }
-    }
-
-    if (file) {
-        isTiff ? reader.readAsArrayBuffer(file) : reader.readAsDataURL(file);
-        submitButton.style.visibility = "visible";
-    } else {
-        preview.src = "";
-    }
-}
-
-//events of top bar
 topBar[0].addEventListener("click", function () {
-    drawTypePoints?null:drawTypeFunc();
+    drawTypePoints ? null : drawTypeFunc();
     assignDrawTypeListener();
     topBar[0].style.visibility = "hidden";
     topBar[1].style.visibility = "visible";
@@ -188,12 +69,6 @@ topBar[0].addEventListener("click", function () {
 
 topBar[3].addEventListener("click", function () {
     if (basePixelPush.length == 2 && topBar[1].value != "" && topBar[2].value != "") {
-        /*
-        undoButton.style.visibility = "visible";
-        clearButton.style.visibility = "visible";
-        showDimensionsButton.style.visibility = "visible";
-        drawType.style.visibility = "visible";
-        */
         topBar[0].style.visibility = "visible";
         topBar[1].style.visibility = "hidden";
         topBar[2].style.visibility = "hidden";
@@ -214,12 +89,8 @@ topBar[3].addEventListener("click", function () {
     } else {
         alert('Too few points or fields empty');
     }
-})
+});
 
-
-//hide dimensions stuff
-
-let showingDimensions = false;
 showDimensionsButton.addEventListener("click", function () {
     if (showingDimensions) {
         showDimensionsButton.innerHTML = "Show Dimensions";
@@ -229,12 +100,137 @@ showDimensionsButton.addEventListener("click", function () {
     showingDimensions = !showingDimensions;
     updateAll();
 });
-////after submission
-var allAreas = [];
-var allPoints = [];
-var dashedLines = [];
-var curFirstPoint = null;
 
+clearButton.addEventListener("click", function () {
+    currentInputing ? basePixelPush = [] : null;
+    clearVariables();
+    allAreas = [];
+    drawArea.clear();
+    drawCurrentImage();
+});
+
+//VARIABLES WITH EVENTLISTENER FUNCTIONS REFERENCE (for removal of event listeners also)
+let mouseHandlers = {
+    click: function (event) {
+        setPreviousMove()
+        let rect = drawArea.canvas.getBoundingClientRect();
+        let mouseX = event.clientX - rect.left;
+        let mouseY = event.clientY - rect.top;
+        addPoint(mouseX, mouseY);
+    },
+    mousedown: function (event) {
+        if (!recordLasso) { setPreviousMove() }
+        recordLasso = true;
+    },
+    mousemove: function (event) {
+        if (recordLasso) {
+            let rect = drawArea.canvas.getBoundingClientRect();
+            let mouseX = event.clientX - rect.left;
+            let mouseY = event.clientY - rect.top;
+            addPoint(mouseX, mouseY);
+        }
+    },
+    mouseleave: function () {
+        if (recordLasso) {
+            recordLasso = false;
+            closeLasso();
+        }
+    },
+    mouseup: function (event) {
+        if (recordLasso) {
+            recordLasso = false;
+            closeLasso();
+        }
+    }
+}
+
+//FUNCTIONS
+
+//Verifies whether a user wants to change draw type
+function verify(func) {
+    switch (func) {
+        case drawTypeFunc:
+            confirm("This will clear the current drawing") ? func() : null;
+            break;
+        default:
+    }
+}
+
+function drawTypeFunc() {
+    if (drawTypePoints) {
+        drawTypePoints = false;
+        drawType.innerHTML = "Draw Type: <strong>Lasso</strong>"
+    } else {
+        drawTypePoints = true;
+        drawType.innerHTML = "Draw Type: <strong>Points</strong>"
+    }
+    clearVariables();
+    updateAll();
+    assignDrawTypeListener();
+}
+
+//Assigning the draw type click/lasso
+function assignDrawTypeListener() {
+    if (drawTypePoints) {
+        drawArea.canvas.removeEventListener('mousedown', mouseHandlers.mousedown);
+        drawArea.canvas.removeEventListener('mousemove', mouseHandlers.mousemove);
+        drawArea.canvas.removeEventListener('mouseleave', mouseHandlers.mouseleave);
+        drawArea.canvas.removeEventListener('mouseup', mouseHandlers.mouseup);
+        drawArea.canvas.addEventListener('click', mouseHandlers.click);
+    } else {
+        drawArea.canvas.removeEventListener('click', mouseHandlers.click);
+        drawArea.canvas.addEventListener('mousedown', mouseHandlers.mousedown);
+        drawArea.canvas.addEventListener('mousemove', mouseHandlers.mousemove);
+        drawArea.canvas.addEventListener('mouseleave', mouseHandlers.mouseleave);
+        drawArea.canvas.addEventListener('mouseup', mouseHandlers.mouseup);
+    }
+}
+
+//Called when user lifts off click, creates a shape
+function closeLasso() {
+    let dashedLine = new newDashedLine(allPoints[0], allPoints[allPoints.length - 1])
+    dashedLines.push(dashedLine);
+    setArea();
+    allPoints = [];
+    curFirstPoint = null;
+    setAreaTxt(allAreas[allAreas.length - 1]);
+    updateAll();
+}
+
+//Loads preview Image on the left half of the screen
+function previewFile() {
+    resetBasePixel();
+    undoButton.style.visibility = "hidden";
+    clearButton.style.visibility = "hidden";
+    showDimensionsButton.style.visibility = "hidden";
+    drawType.style.visibility = "hidden";
+    topBar[0].style.visibility = "hidden";
+    topBar[1].style.visibility = "hidden";
+    topBar[2].style.visibility = "hidden";
+    topBar[3].style.visibility = "hidden";
+    let preview = document.querySelector('img');
+    let file = document.querySelector('input[type=file]').files[0];
+    isTiff = file.name.split(".").pop() == "tiff" || file.name.split(".").pop() == "tif"
+    let reader = new FileReader();
+    reader.onloadend = function () {
+        if (isTiff) {
+            curTiff = new Tiff({ buffer: reader.result });
+            preview.src = curTiff.toDataURL();
+            currentImg.src = curTiff.toDataURL();
+        } else {
+            preview.src = reader.result;
+            currentImg.src = reader.result;
+        }
+    }
+    if (file) {
+        isTiff ? reader.readAsArrayBuffer(file) : reader.readAsDataURL(file);
+        submitButton.style.visibility = "visible";
+    } else {
+        preview.src = "";
+    }
+}
+
+//Circle component constructor function
 function circleComponent(centerX, centerY, radius, color = '#00fc04') {
     this.centerX = centerX;
     this.centerY = centerY;
@@ -252,19 +248,12 @@ function circleComponent(centerX, centerY, radius, color = '#00fc04') {
     }
 }
 
-
-
-submitButton.addEventListener('click', drawAreaStart);
-
-
-
-
-
+//Starts the canvas and draws the current image
 function drawAreaStart() {
-    
+
     drawArea.context = drawArea.canvas.getContext("2d");
     assignDrawTypeListener();
-    
+
     clearVariables();
     document.querySelector('img').src = "";
     submitButton.style.visibility = "hidden";
@@ -275,31 +264,24 @@ function drawAreaStart() {
     drawType.style.visibility = "visible";
 
     topBar[0].style.visibility = "visible";
-    //if (isTiff) {
-    //    drawArea.canvas = curTiff.toCanvas();
-    //} else {
-
     drawArea.canvas.width = screenWidth * 0.7; allPoints = [];
     dashedLines = [];
     drawArea.canvas.height = currentImg.height / currentImg.width * drawArea.canvas.width;
 
     drawCurrentImage();
 
-    //}
-
     document.body.insertBefore(drawArea.canvas, document.body.childNodes[0]);
-    //updateAll();
 }
 
+//add points when screen clicked or mouse held down
 function addPoint(posX, posY) {
-
     let newPoint = new circleComponent(posX, posY, 1, "#00eaff");
     if (curFirstPoint != null && Math.sqrt(Math.pow((newPoint.centerX - curFirstPoint.centerX), 2) + Math.pow((newPoint.centerY - curFirstPoint.centerY), 2)) <= 8 && drawTypePoints) {
         newPoint.centerX = curFirstPoint.centerX;
         newPoint.centerY = curFirstPoint.centerY;
         let dashedLine = new newDashedLine(allPoints[0], allPoints[allPoints.length - 1])
         dashedLines.push(dashedLine);
-        allAreas.push({ points: allPoints });
+        setArea();
         allPoints = [];
         curFirstPoint = null;
         setAreaTxt(allAreas[allAreas.length - 1]);
@@ -313,7 +295,6 @@ function addPoint(posX, posY) {
             newPoint.color = "#00FFFF";
             newPoint.radius = 2;
             basePixelPush.push(newPoint);
-            //console.log(basePixelPush);
         } else {
             allPoints.push(newPoint);
         }
@@ -327,11 +308,12 @@ function addPoint(posX, posY) {
         }
     }
 
-    
+
     updateAll();
-    currentInputing?updateInputPoints():null;
+    currentInputing ? updateInputPoints() : null;
 }
 
+//Finds the area of the enclosed Area by Shoelace Formula
 function findArea(poi) {
     if (poi.length == 2) {
         return findLength();
@@ -347,10 +329,12 @@ function findArea(poi) {
     return Math.abs(total) / 2;
 }
 
+//Uses Quadratic Formula to find the length between two Point objects
 function findLength(a, b) {
     return Math.sqrt(Math.pow(a.centerX - b.centerX, 2) + Math.pow(a.centerY - b.centerY, 2));
 }
 
+//Dashed Line constructor function
 function newDashedLine(comp1, comp2, color = "#00ff4c") {
     this.comp1 = comp1;
     this.comp2 = comp2;
@@ -363,9 +347,9 @@ function newDashedLine(comp1, comp2, color = "#00ff4c") {
         drawArea.context.lineTo(comp2.centerX, comp2.centerY);
         drawArea.context.stroke();
     };
-    this.lengthTxt = drawTypePoints?`${(findLength(comp1, comp2) * baseLength / basePixels).toFixed(4)} ${unit}`:null;
+    this.lengthTxt = drawTypePoints ? `${(findLength(comp1, comp2) * baseLength / basePixels).toFixed(4)} ${unit}` : null;
     this.updateLengthText = function () {
-        drawArea.context.font = "10px Arial";
+        drawArea.context.font = "14px Arial";
         drawArea.context.fillStyle = "#fc0303";
         drawTypePoints ? drawArea.context.fillText(this.lengthTxt, (this.comp1.centerX + this.comp2.centerX) / 2 - drawArea.canvas.width / 32, (this.comp1.centerY + this.comp2.centerY) / 2) : null;
     };
@@ -374,38 +358,26 @@ function newDashedLine(comp1, comp2, color = "#00ff4c") {
     }
 }
 
+//Redraws all points in the array allPoints
 function updatePoints() {
     for (let i = 0; i < allPoints.length; i++) {
         allPoints[i].update();
     }
 }
 
+//Redraws all lines in the array dashedLines
 function updateDashedLines() {
     for (let i = 0; i < dashedLines.length; i++) {
         dashedLines[i].update();
     }
 }
 
+//Redraws the current image on the canvas
 function drawCurrentImage() {
-    /*
-    if (isTiff) {
-        drawArea.canvas = curTiff.toCanvas();
-        console.log(drawArea.canvas);
-        drawArea.canvas.addEventListener('click', (event) => {
-            var rect = drawArea.canvas.getBoundingClientRect();
-            console.log(rect)
-            let mouseX = event.clientX - rect.left
-            let mouseY = event.clientY - rect.top;
-            addPoint(mouseX, mouseY);
-        
-        });
-        console.log(drawArea.canvas);
-    } else {*/
     drawArea.context.drawImage(currentImg, 0, 0, drawArea.canvas.width, drawArea.canvas.height);
-    //}
-
 }
 
+//Redraws all on Canvas
 function updateAll() {
     drawArea.clear();
     drawCurrentImage();
@@ -413,12 +385,13 @@ function updateAll() {
     updateDashedLines();
     reLengthDashed();
     setAllAreaTxt();
-    if (showingDimensions && unit!=null && baseLength!=null && basePixels!=null) {
+    if (showingDimensions && unit != null && baseLength != null && basePixels != null) {
         dashedLines.forEach(function (x) { x.updateLengthText() });
         allAreas.forEach(function (x) { x.updateArea() });
     }
 }
 
+//Clears all arrays with stored points, lines, or areas
 function clearVariables() {
     allPoints = [];
     dashedLines = [];
@@ -426,27 +399,30 @@ function clearVariables() {
     allAreas = [];
 }
 
-
-clearButton.addEventListener("click", function () {
-    currentInputing?basePixelPush = []:null;
-    clearVariables();
-    allAreas = [];
-    drawArea.clear();
-    drawCurrentImage();
-});
-
+//Resets the length unit measures per pixel
 function resetBasePixel() {
     baseLength = null;
     unit = null;
-    basePixels = null; // was 10
+    basePixels = null;
     basePixelPush = [];
 }
 
+//Sets the area and the length of the enclosed ergion
+function setArea() {
+    let totalLength = 0;
+    for (let i = 0; i < allPoints.length - 1; i++) {
+        totalLength += findLength(allPoints[i], allPoints[i + 1]);
+    }
+    allAreas.push({ points: allPoints, totalLength: totalLength });
+}
+
+//sets the area and updateArea functions of Area objects again
 function setAreaTxt(x) {
-    x.area = `${(findArea(x.points) * baseLength * baseLength / basePixels / basePixels).toFixed(4)} ${unit}^2`;
+    x.area = `Area: ${(findArea(x.points) * baseLength * baseLength / basePixels / basePixels).toFixed(2)} ${unit}^2`;
+    x.totalLengthTxt = `Length: ${x.totalLength.toFixed(2)} ${unit}`
     x.updateArea = function () {
-        drawArea.context.font = "10px Arial";
-        drawArea.context.fillStyle = "#0000ff";
+        drawArea.context.font = "14px Arial";
+        drawArea.context.fillStyle = "#00ffbb";
         let tempX = 0;
         let tempY = 0;
         for (let i = 0; i < x.points.length; i++) {
@@ -455,37 +431,101 @@ function setAreaTxt(x) {
         }
         tempX /= x.points.length;
         tempY /= x.points.length;
-        drawArea.context.fillText(this.area, tempX - drawArea.canvas.width / 32, tempY);
-
+        drawArea.context.fillText(this.area, tempX - drawArea.canvas.width / 16, tempY);
+        drawArea.context.fillText(this.totalLengthTxt, tempX - drawArea.canvas.width / 16, tempY + 30);
     }
 }
 
+//Sets all the texts inside an area
 function setAllAreaTxt() {
     for (let i = 0; i < allAreas.length; i++) {
         setAreaTxt(allAreas[i]);
     }
 }
 
+//Changes the length text of dashed lines when called
 function reLengthDashed() {
     for (let i = 0; i < dashedLines.length; i++) {
         dashedLines[i].reLengthTxt();
     }
 }
 
+//
 function updateInputPoints() {
-    //console.log('this was called');
     for (let i = 0; i < basePixelPush.length; i++) {
         basePixelPush[i].update();
     }
 }
 
+//Stores data of previous move in the previousMove object for the "undo" button to have a reference for the last instance
+function setPreviousMove() {
+    previousMove.allPoints = JSON.parse(JSON.stringify(allPoints));
+    previousMove.allAreas = JSON.parse(JSON.stringify(allAreas));
+    previousMove.curFirstPoint = JSON.parse(JSON.stringify(curFirstPoint));
+    previousMove.dashedLines = JSON.parse(JSON.stringify(dashedLines));
+}
+
+//Peforms the "undo" functionality by referring to previousMove object
+function goPrevious() {
+    if (previousMove.allPoints != null) {
+        allPoints = JSON.parse(JSON.stringify(previousMove.allPoints));
+        allAreas = JSON.parse(JSON.stringify(previousMove.allAreas));
+        curFirstPoint = JSON.parse(JSON.stringify(previousMove.curFirstPoint));
+        dashedLines = JSON.parse(JSON.stringify(previousMove.dashedLines));
+    }
+    reDefineAreaUpdate();
+    reDefineLineUpdate();
+    reDefinePointUpdate();
+    updateAll();
+}
+
+//Redefine point update function
+function reDefinePointUpdate() {
+    for (let i = 0; i < allPoints.length; i++) {
+        allPoints[i].update = function () {
+            ctx = drawArea.context;
+            ctx.fillStyle = this.color;
+            ctx.beginPath();
+            ctx.arc(this.centerX, this.centerY, this.radius, 0, 2 * Math.PI, false);
+            ctx.fill();
+            ctx.lineWidth = 0;
+            ctx.strokeStyle = this.color;
+            ctx.stroke();
+        }
+    }
+}
+
+//Redefine area update function
+function reDefineAreaUpdate() {
+    for (let i = 0; i < allAreas.length; i++) {
+        setAreaTxt(allAreas[i]);
+    }
+}
+
+//Redefine line update function
+function reDefineLineUpdate() {
+    for (let i = 0; i < dashedLines.length; i++) {
+        dashedLines[i].update = function () {
+            drawArea.context.beginPath();
+            drawArea.context.strokeStyle = this.color;
+            drawArea.context.setLineDash([3, 5]);
+            drawArea.context.moveTo(this.comp1.centerX, this.comp1.centerY);
+            drawArea.context.lineTo(this.comp2.centerX, this.comp2.centerY);
+            drawArea.context.stroke();
+        };
+        dashedLines[i].updateLengthText = function () {
+            drawArea.context.font = "14px Arial";
+            drawArea.context.fillStyle = "#fc0303";
+            drawTypePoints ? drawArea.context.fillText(this.lengthTxt, (this.comp1.centerX + this.comp2.centerX) / 2 - drawArea.canvas.width / 32, (this.comp1.centerY + this.comp2.centerY) / 2) : null;
+        };
+        dashedLines[i].reLengthTxt = function () {
+            drawTypePoints ? this.lengthTxt = `${(findLength(this.comp1, this.comp2) * baseLength / basePixels).toFixed(4)} ${unit}` : null;
+        }
+    }
+}
 
 
 
-
-
-
-
-function about(){
+function about() {
     alert("This web app does not support Internet Explorer, Opera Mini, Blackberry Browser, Opera Mobile, and IE Mobile")
 }
